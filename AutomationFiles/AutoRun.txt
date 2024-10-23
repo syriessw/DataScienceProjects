@@ -1,0 +1,243 @@
+@echo off
+REM *************************************************************************************
+REM This bat file installs Python 3.10 version, and relevant packages
+REM Provide login credentials for environment
+REM And run the two Python files
+REM GetRedactedOne.py -- this file obtains all existing Redacted in a XLSX file
+REM GetRedactedTwo.py -- this file obtains all benefits listed in each row of the Redacted XLSX file and the relevant information override
+REM It also will output Redacted
+REM *************************************************************************************
+setlocal enabledelayedexpansion
+
+echo ______           _____  _____   _   _                        _       
+echo ^|  ___^|         /  __ \^|  ___^| ^| ^| ^| ^|                      ^| ^|      
+echo ^| ^|_ ___  _ __  ^| /  \/^| ^|__   ^| ^| ^| ^|___  ___    ___  _ __ ^| ^|_   _ 
+echo ^|  _/ _ \^| '__^| ^| ^|    ^|  __^|  ^| ^| ^| / __^|/ _ \  / _ \^| '_ \^| ^| ^| ^| ^|
+echo ^| ^|^| (_) ^| ^|    ^| \__/\^| ^|___  ^| ^|_^| \__ \  __/ ^| (_) ^| ^| ^| ^| ^| ^|_^| ^|
+echo \_^| \___/^|_^|     \____/\____/   \___/^|___/\___^|  \___/^|_^| ^|_^|_^|\__, ^|
+echo                                                                 __/ ^|
+echo                                                                ^|___/ 
+echo.
+
+REM Get the directory where the script is run
+set "main_folder=%~dp0"
+set "archive_folder=%main_folder%archive"
+
+echo Main folder: %main_folder%
+echo Archive folder: %archive_folder%
+pause
+
+REM Create the archive folder if it doesn't exist
+if not exist "%archive_folder%" (
+	echo Making archive directory
+    mkdir "%archive_folder%"
+)
+
+REM Get the current date
+for /f "tokens=2 delims==" %%i in ('wmic os get localdatetime /value') do set datetime=%%i
+set current_date=%datetime:~0,8%
+
+REM Set the Python version and installer URL
+set PYTHON_VERSION=3.10.5
+set PYTHON_FILE_VERSION=%PYTHON_VERSION:~0,4%
+set PYTHON_INSTALLER=python-%PYTHON_VERSION%-amd64.exe
+set PYTHON_URL=https://www.python.org/ftp/python/%PYTHON_VERSION%/%PYTHON_INSTALLER%
+
+REM Function to check if Python is installed
+:check_python
+	python --version > nul 2>&1
+	if %errorlevel% neq 0 (
+		echo Python is not installed.
+		goto download_python
+	) else (
+		echo Python is already installed.
+		goto setup_environment
+	)
+
+REM Function to download Python installer
+:download_python
+	echo Downloading Python...
+	powershell -Command "Invoke-WebRequest -Uri %PYTHON_URL% -OutFile %PYTHON_INSTALLER%
+	if %errorlevel% neq 0 (
+		echo Failed to download Python installer
+		pause
+		exit /b 1
+	) else (
+		echo Python installer downloaded successfully
+		goto install_python
+	)
+
+REM Function to install Python
+:install_python
+	echo Installing Python...
+	start /wait %PYTHON_INSTALLER% /quiet InstallAllUsers=0 PrependPath=1
+	if %errorlevel% neq 0 (
+		echo Failed to install Python.
+		pause
+		exit /b 1
+	) else (
+		echo Python installed successfully.
+		echo %PYTHON_FILE_VERSION%
+		goto set_env_vars
+	)
+
+REM Function to set environment variables
+:set_env_vars
+	echo Setting environment variables...
+
+	REM Query the Python installation path from the Windows Registry
+	for /f "tokens=2*" %%A in ('reg query "HKLM\SOFTWARE\Python\PythonCore\%PYTHON_FILE_VERSION%\InstallPath" /ve 2^>nul') do set PYTHON_PATH=%%B
+
+	REM If Python is installed for current user only, query the user registry hive
+	if not defined PYTHON_PATH (
+		for /f "tokens=2*" %%A in ('reg query "HKCU\SOFTWARE\Python\PythonCore\%PYTHON_FILE_VERSION%\InstallPath" /ve 2^>nul') do set PYTHON_PATH=%%B
+	)
+
+	REM Check if we successfully obtained the Python path
+	if not defined PYTHON_PATH (
+		echo Failed to find Python installation path in the registry.
+		pause
+		exit /b 1
+	)
+
+	REM Trim trailing backslash
+	if %PYTHON_PATH:~-1%==\ set PYTHON_PATH=%PYTHON_PATH:~0,-1%
+
+	REM Add Python to PATH
+	setx PATH "%PATH%;%PYTHON_PATH%;%PYTHON_PATH%\Scripts"
+	REM Refresh environment variables in the current session
+	set PATH=%PATH%;%PYTHON_PATH%;%PYTHON_PATH%\Scripts
+	goto check_python
+
+REM Function to set up the virtual environment and install packages
+:setup_environment
+REM Create a virtual environment
+python -m venv venv
+
+REM Activate the virtual environment
+call venv\Scripts\activate
+
+REM Upgrade pip
+echo Upgrading pip
+python -m pip install --upgrade pip
+echo Updated pip
+
+REM Install required packages
+pip install openpyxl
+pip install pandas
+pip install requests
+pip install requests-toolbelt
+pip install XlsxWriter
+pip install alive-progress
+echo All packages installed
+echo.
+echo.
+
+:start_code
+REM Ask whether to retrieve Scheme Templates from REDACTED
+set /p "UserChoice=Do you want to retrieve Scheme Templates and Versions information from REDACTED [Y/N]?"
+if "%UserChoice%" == "N" goto t_change
+if "%UserChoice%" == "n" goto t_change
+if "%UserChoice%" == "Y" goto retrieve_env
+if "%UserChoice%" == "y" goto retrieve_env
+if "%UserChoice%" == "" goto retrieve_env
+echo "%choice%" is not valid
+echo.
+goto start_code
+
+REM Ask for Username and Password
+:retrieve_env
+echo.
+echo   ___             __ _       _     __             _       
+echo  / __\___  _ __  / _(_) __ _/ ^|   / /  ___   __ _(_)_ __  
+echo / /  / _ \^| '_ \^| ^|_^| ^|/ _` ^| ^|  / /  / _ \ / _` ^| ^| '_ \ 
+echo/ /__^| (_) ^| ^| ^| ^|  _^| ^| (_^| ^| ^| / /__^| (_) ^| (_^| ^| ^| ^| ^| ^|
+echo\____/\___/^|_^| ^|_^|_^| ^|_^|\__, ^|_^| \____/\___/ \__, ^|_^|_^| ^|_^|
+echo                        ^|___/                ^|___/         
+echo Please enter your credentials for REDACTED environment...
+echo.
+set /p "username=Enter Username: "
+set "psCommand=powershell -Command "$pword = read-host 'Enter Password' -AsSecureString ; ^
+    $BSTR=[System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($pword); ^
+        [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)""
+for /f "usebackq delims=" %%p in (`%psCommand%`) do set password=%%p
+pause
+
+REM Run the Python Script
+set errorlevel=
+set return_code = %1
+python GetRedactedOne.py %username% %password%
+echo %errorlevel%
+if ERRORLEVEL 15 (
+	echo Retry Login Please
+	goto retrieve_env
+) else (
+	python GetRedactedTwo.py %username% %password%
+)
+
+:template_change
+REM Process from C folder on master branch
+echo.
+echo.
+echo Now commencing getting RedactedInfo
+python GetRedactedThree.py
+
+REM Deactivate the virtual environment
+call venv\Scripts\Deactivate
+goto cleanup
+
+:cleanup
+REM Create a temporary file to store unique file names
+set "temp_file=%temp%\unique_files.txt"
+if exist "%temp_file%" del "%temp_file%"
+
+REM Loop through all Excel files in the main folder
+for %%f in ("%main_folder%\*.xlsx") do (
+    REM Extract the base name (without date suffix)
+    set "file_name=%%~nf"
+    set "base_name=!file_name:~0,-9!"
+    echo !base_name! >> "%temp_file%"
+)
+
+REM Sort and remove duplicates from the temporary file
+sort "%temp_file%" /unique > "%temp%\sorted_unique_base_names.txt"
+del "%temp_file%"
+
+REM Read unique base names and process files
+for /f "tokens=*" %%u in (%temp%\sorted_unique_base_names.txt) do (
+    set "latest_file="
+    set "latest_time=0"
+
+    
+    :: Loop through each .xlsx file in the main folder that includes the current unique name
+    for /f "tokens=*" %%f in ('dir /b /a-d /tw "%main_folder%\*.xlsx" ^| findstr /i "%%u"') do (
+        :: Get the last modified time of the file
+        for /f "tokens=1-5 delims=/: " %%a in ("%%~tf") do (
+            set "file_date=%%c%%b%%a%%d%%e"
+        )
+
+        :: Check if this file's date is greater than the last recorded latest
+        if "!file_date!" gtr "!latest_time!" (
+            set "latest_time=!file_date!"
+            set "latest_file=%%f"
+        )
+    )
+
+    :: Now move files that are not the latest to the archive folder
+    for /f "tokens=*" %%f in ('dir /b /a-d /tw "%main_folder%\*.xlsx" ^| findstr /i "%%u"') do (
+        if not "%%f"=="!latest_file!" (
+            echo Moving file: %%f to archive folder
+            move "%main_folder%\%%f" "%archive_folder%"
+        )
+    )
+)
+
+REM Clean up temporary files
+del "%temp%\sorted_unique_base_names.txt"
+
+REM End of Scripts
+:eof
+echo Script execution completed.
+pause
+endlocal
+exit /b 0
