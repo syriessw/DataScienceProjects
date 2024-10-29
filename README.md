@@ -11,6 +11,7 @@ Welcome to my collection of personal data projects, capstone projects, and Pytho
 ### 2. **Personal Data Projects**
    - **Customer Churn Prediction**: Developed machine learning models to predict customer churn based on the Telco dataset. Optimized accuracy through feature engineering and hyperparameter tuning.
    - **Titanic Dataset Analysis**: Performed EDA and imputation techniques to predict passenger survival rates using Decision Tree and XGBRegressor.
+   - **RAG LLMs**: Creating a Retrieval Augmented Generation pipeline using LangChain and LLMs to retrieve information from loaded PDF and some web sites.
 
 ### 3. **Python Automation Scripts**
    - **Task Automation with BAT file and Python scripts**: Created Python workflows to reduce repetitive tasks, saving over 60 hours of manual work across projects. Portion of the work cannot be shown.
