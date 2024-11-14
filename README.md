@@ -19,7 +19,7 @@ Welcome to my collection of personal data projects, capstone projects, and Pytho
 
 ## 🛠️ Technologies Used
 - **Languages**: Python, SQL
-- **Libraries**: pandas, NumPy, sci-kit-learn, XGB, Matplotlib, BeautifulSoup, NLTK, LangChain, PyPDFLoader
+- **Libraries**: pandas, NumPy, sci-kit-learn, XGB, Matplotlib, BeautifulSoup, NLTK, LangChain, PyPDFLoader, PySpark
 - **Tools**: Jupyter Notebook, Power BI, Confluence
 - **LLMs**: MiniLM, Mistral, GPT3.5
 
